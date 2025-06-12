@@ -2,7 +2,9 @@ FROM gitpod/workspace-full-vnc
 SHELL ["/bin/bash", "-c"]
 
 ENV ANDROID_HOME=/home/gitpod/androidsdk \
-    FLUTTER_VERSION=2.2.3-stable
+    FLUTTER_VERSION=2.2.3-stable \
+    ANDROID_BUILD_TOOLS_VERSION=34.0.0 
+    # <--- Define your desired build tools version here
 
 USER root
 
@@ -70,8 +72,17 @@ RUN wget https://dl.google.com/android/repository/commandlinetools-linux-7583922
     && mv $ANDROID_HOME/cmdline-tools/lib $ANDROID_HOME/cmdline-tools/latest
 
 # Add Android SDK paths to the user's bashrc for future interactive sessions.
+# This should also include the build-tools path, though for a Dockerfile build step,
+# it's often more reliable to use the full path or ensure it's on the PATH
+# for the specific RUN command, as we will below.
 RUN echo "export ANDROID_HOME=$ANDROID_HOME" >> /home/gitpod/.bashrc \
-    && echo 'export PATH=$ANDROID_HOME/emulator:$ANDROID_HOME/tools:$ANDROID_HOME/cmdline-tools/bin:$ANDROID_HOME/platform-tools:$PATH' >> /home/gitpod/.bashrc
+    && echo 'export PATH=$ANDROID_HOME/emulator:$ANDROID_HOME/tools:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH' >> /home/gitpod/.bashrc
+
+# --- ADD THIS SECTION ---
+# Install Android SDK Build-Tools using sdkmanager
+# We use the ANDROID_BUILD_TOOLS_VERSION variable for clarity and easy updates.
+RUN yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;${ANDROID_BUILD_TOOLS_VERSION}"
+# --- END ADDITION ---
 
 # Install Android platform-tools, platform 30, and emulator.
 RUN yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-30" "emulator"
