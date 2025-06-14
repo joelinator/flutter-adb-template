@@ -3,7 +3,7 @@ SHELL ["/bin/bash", "-c"]
 
 ENV ANDROID_HOME=/home/gitpod/androidsdk \
     FLUTTER_VERSION=2.2.3-stable \
-    ANDROID_BUILD_TOOLS_VERSION=34.0.0 
+    ANDROID_BUILD_TOOLS_VERSION=34.0.0
     # <--- Define your desired build tools version here
 
 USER root
@@ -34,9 +34,29 @@ RUN apt update
 # Replaced 'install-packages' with standard 'apt install -y'.
 RUN apt install -y build-essential dart libkrb5-dev gcc make gradle android-tools-adb android-tools-fastboot
 
-# Install Open JDK 8
-RUN apt install -y openjdk-8-jdk \
-    && update-java-alternatives --set java-1.8.0-openjdk-amd64
+# Install Open JDK 17
+RUN apt install -y openjdk-17-jdk
+
+# Set OpenJDK 17 as the default Java version.
+# Verify this exact path in your build if you encounter issues.
+# A common path for OpenJDK 17 on Debian-based systems is /usr/lib/jvm/java-17-openjdk-amd64
+RUN update-java-alternatives --set java-1.17.0-openjdk-amd64
+
+# --- ADDED SECTION FOR JAVA_HOME ---
+# Determine the correct JAVA_HOME path.
+# This command finds the path pointed to by the 'java' alternative.
+# It then sets the JAVA_HOME environment variable to this path.
+RUN export JAVA_HOME=$(readlink -f /usr/bin/java | sed "s:jre/bin/java::;s:bin/java::") \
+    && echo "export JAVA_HOME=$JAVA_HOME" >> /home/gitpod/.bashrc \
+    && echo 'export PATH="$JAVA_HOME/bin:$PATH"' >> /home/gitpod/.bashrc
+
+# Optional: Add JAVA_HOME to /etc/environment for system-wide availability (less common for user-specific dev setup)
+# RUN echo "JAVA_HOME=$JAVA_HOME" >> /etc/environment
+
+# Verify the Java version and JAVA_HOME during the build process
+RUN java -version
+RUN echo $JAVA_HOME
+# --- END ADDED SECTION ---
 
 # Install Google Chrome stable version.
 RUN apt install -y google-chrome-stable
@@ -78,11 +98,9 @@ RUN wget https://dl.google.com/android/repository/commandlinetools-linux-7583922
 RUN echo "export ANDROID_HOME=$ANDROID_HOME" >> /home/gitpod/.bashrc \
     && echo 'export PATH=$ANDROID_HOME/emulator:$ANDROID_HOME/tools:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH' >> /home/gitpod/.bashrc
 
-# --- ADD THIS SECTION ---
 # Install Android SDK Build-Tools using sdkmanager
 # We use the ANDROID_BUILD_TOOLS_VERSION variable for clarity and easy updates.
 RUN yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;${ANDROID_BUILD_TOOLS_VERSION}"
-# --- END ADDITION ---
 
 # Install Android platform-tools, platform 30, and emulator.
 RUN yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-30" "emulator"
